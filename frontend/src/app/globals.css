@@ -1,0 +1,25 @@
+/* ──────────────────────────────────────────────────────────
+   Tailwind CSS directives — required for all utility classes
+   ────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────
+   Minimal safe globals — do not override Tailwind utilities
+   ────────────────────────────────────────────────────────── */
+
+/* Smooth font rendering on all platforms */
+*,
+*::before,
+*::after {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow at the root */
+html,
+body {
+  overflow-x: hidden;
+}
