@@ -4,20 +4,45 @@
       "phc_id": "PHC001",
       "medicine_id": "MED001",
       "surplus": 500
+    },
+    {
+      "phc_id": "PHC002",
+      "medicine_id": "MED001",
+      "surplus": 300
     }
   ],
   "destinations": [
     {
       "phc_id": "PHC003",
       "medicine_id": "MED001",
-      "required": 300
+      "required": 400
+    },
+    {
+      "phc_id": "PHC004",
+      "medicine_id": "MED001",
+      "required": 200
     }
   ],
   "distances": [
     {
       "source_phc": "PHC001",
       "destination_phc": "PHC003",
-      "distance_km": 25
+      "distance_km": 20
+    },
+    {
+      "source_phc": "PHC001",
+      "destination_phc": "PHC004",
+      "distance_km": 40
+    },
+    {
+      "source_phc": "PHC002",
+      "destination_phc": "PHC003",
+      "distance_km": 30
+    },
+    {
+      "source_phc": "PHC002",
+      "destination_phc": "PHC004",
+      "distance_km": 10
     }
   ]
 }
