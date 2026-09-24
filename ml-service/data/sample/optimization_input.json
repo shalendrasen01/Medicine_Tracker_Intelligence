@@ -1,0 +1,23 @@
+{
+  "sources": [
+    {
+      "phc_id": "PHC001",
+      "medicine_id": "MED001",
+      "surplus": 500
+    }
+  ],
+  "destinations": [
+    {
+      "phc_id": "PHC003",
+      "medicine_id": "MED001",
+      "required": 300
+    }
+  ],
+  "distances": [
+    {
+      "source_phc": "PHC001",
+      "destination_phc": "PHC003",
+      "distance_km": 25
+    }
+  ]
+}
