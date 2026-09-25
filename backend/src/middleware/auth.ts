@@ -1,6 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
+export interface AuthUser {
+  userId: string;
+  role: string;
+  stateId?: string | null;
+  phcId?: string | null;
+}
+
 export const authenticate = (
   req: Request,
   res: Response,

@@ -1,11 +1,12 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../config/database";
+import { logAudit } from "../services/auditService";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, stateId, phcId } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -23,6 +24,8 @@ export const register = async (req: Request, res: Response) => {
         email,
         passwordHash,
         role,
+        stateId: stateId || null,
+        phcId: phcId || null,
       },
     });
 
@@ -33,14 +36,16 @@ export const register = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        stateId: user.stateId,
+        phcId: user.phcId,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Registration failed" });
+    next(error);
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
@@ -59,13 +64,29 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      {
+        userId: user.id,
+        role: user.role,
+        stateId: user.stateId,
+        phcId: user.phcId,
+      },
       process.env.JWT_SECRET!,
       { expiresIn: "1d" },
     );
 
+    await logAudit({
+      userId: user.id,
+      action: "USER_LOGIN",
+      entity: "User",
+      entityId: user.id,
+      details: {
+        email: user.email,
+        role: user.role,
+      },
+    });
+
     res.json({ token });
-  } catch {
-    res.status(500).json({ message: "Login failed" });
+  } catch (error) {
+    next(error);
   }
 };
