@@ -14,6 +14,7 @@ import resourceRoutes from "./routes/resourceRoutes";
 import staffRoutes from "./routes/staffRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import jobRoutes from "./routes/jobRoutes";
+import predictionRoutes from "./routes/predictionRoutes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { prisma } from "./config/database";
 import { redis } from "./config/redis";
@@ -35,6 +36,8 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/predictions", predictionRoutes);
+
 
 app.get("/health", async (_req, res) => {
   let dbStatus = "connected";

@@ -694,3 +694,146 @@ Trigger a low stock inspection across PHC inventories.
   "jobId": "2"
 }
 ```
+
+---
+
+### 5.14 Predictions & Machine Learning
+
+Exposes inference, stockout projections, and redistribution optimization backed by the FastAPI ML microservice.
+
+#### `GET /api/predictions/health`
+Probes connectivity to the underlying ML microservice.
+
+- **Auth:** Any authenticated user
+- **Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "online": true,
+  "url": "http://127.0.0.1:8000"
+}
+```
+
+#### `POST /api/predictions/demand`
+Predicts daily medicine consumption using an XGBoost regression model.
+
+- **Auth:** `CENTRAL_ADMIN`, `STATE_ADMIN`, `PHC_ADMIN` (Facility restricted)
+- **Request Body:**
+```json
+{
+  "phc_id": "phc-uuid-1",
+  "medicine_id": "med-uuid-1",
+  "stock": 500,
+  "patient_footfall": 120,
+  "temperature": 27.5,
+  "disease_cases": 30,
+  "day_of_week": 2,
+  "month": 6,
+  "lag_1": 110,
+  "lag_7": 105,
+  "rolling_mean_7": 108.4
+}
+```
+- **Response (200 OK):**
+```json
+{
+  "phc_id": "phc-uuid-1",
+  "medicine_id": "med-uuid-1",
+  "predicted_demand": 105.41,
+  "risk_level": "HIGH"
+}
+```
+
+#### `POST /api/predictions/stockout`
+Calculates estimated days of remaining inventory runway and risk tier.
+
+- **Auth:** `CENTRAL_ADMIN`, `STATE_ADMIN`, `PHC_ADMIN` (Facility restricted)
+- **Request Body:**
+```json
+{
+  "phc_id": "phc-uuid-1",
+  "medicine_id": "med-uuid-1",
+  "current_stock": 500,
+  "predicted_daily_demand": 105.41
+}
+```
+- **Response (200 OK):**
+```json
+{
+  "phc_id": "phc-uuid-1",
+  "medicine_id": "med-uuid-1",
+  "days_remaining": 4.74,
+  "risk_level": "HIGH"
+}
+```
+
+#### `POST /api/predictions/optimize`
+Generates a multi-facility medicine redistribution plan minimizing transport distance using Google OR-Tools (SCIP linear programming).
+
+- **Auth:** `CENTRAL_ADMIN`, `STATE_ADMIN`, `LOGISTICS_COORDINATOR`
+- **Request Body:**
+```json
+{
+  "sources": [
+    {
+      "phc_id": "phc-source-1",
+      "medicine_id": "med-uuid-1",
+      "surplus": 500
+    }
+  ],
+  "destinations": [
+    {
+      "phc_id": "phc-dest-2",
+      "medicine_id": "med-uuid-1",
+      "required": 300
+    }
+  ],
+  "distances": [
+    {
+      "source_phc": "phc-source-1",
+      "destination_phc": "phc-dest-2",
+      "distance_km": 25.0
+    }
+  ]
+}
+```
+- **Response (200 OK):**
+```json
+{
+  "redistribution_plan": [
+    {
+      "source_phc": "phc-source-1",
+      "destination_phc": "phc-dest-2",
+      "quantity": 300,
+      "distance_km": 25.0
+    }
+  ]
+}
+```
+
+#### `GET /api/predictions/phc/:phcId`
+Aggregates on-hand inventory for a specified PHC and returns joined demand forecasts and stockout risk tiers.
+
+- **Auth:** `CENTRAL_ADMIN`, `STATE_ADMIN`, `PHC_ADMIN` (Facility restricted)
+- **Response (200 OK):**
+```json
+{
+  "phcId": "phc-uuid-1",
+  "count": 1,
+  "items": [
+    {
+      "id": "inventory-uuid-1",
+      "medicineId": "med-uuid-1",
+      "medicineName": "Paracetamol 500mg",
+      "category": "General Antipyretic",
+      "unit": "Tablets",
+      "currentStock": 500,
+      "minStock": 100,
+      "predictedDailyDemand": 30,
+      "daysRemaining": 16.7,
+      "riskLevel": "LOW"
+    }
+  ]
+}
+```
+

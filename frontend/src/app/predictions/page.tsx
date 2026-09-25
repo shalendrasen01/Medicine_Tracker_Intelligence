@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import StatCard from '../../components/dashboard/StatCard';
+import { getPredictionsHealth, getPhcPredictions, getUser } from '@/lib/api';
 
 interface StockoutRiskItem {
   id: string;
@@ -52,27 +53,16 @@ interface AIRecommendation {
   confidence: string;
 }
 
-export default function PredictionsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [phcFilter, setPhcFilter] = useState('All');
-  const [riskFilter, setRiskFilter] = useState('All');
-  const [forecastPeriod, setForecastPeriod] = useState('14');
-  const [simulatedRunTimestamp, setSimulatedRunTimestamp] = useState('Just now (14:35)');
+// Static Demonstration Data: Stockout Risk Dataset (Fallback)
+const initialRiskDataset: StockoutRiskItem[] = [
+  {
+    id: 'RSK-001',
+    medicine: 'Snake Antivenom (Polyvalent)',
+    code: 'EDL-ANT-001',
+    category: 'Emergency Antidotes',
+    phc: 'PHC Junnar Rural',
+    district: 'Pune',
 
-  const breadcrumbs = [
-    { label: 'Portal', href: '/' },
-    { label: 'Predictions & AI' },
-  ];
-
-  // Static Demonstration Data: Stockout Risk Dataset
-  const riskDataset: StockoutRiskItem[] = [
-    {
-      id: 'RSK-001',
-      medicine: 'Snake Antivenom (Polyvalent)',
-      code: 'EDL-ANT-001',
-      category: 'Emergency Antidotes',
-      phc: 'PHC Junnar Rural',
-      district: 'Pune',
       currentStock: 8,
       unit: 'Vials',
       predictedDemand: 10,
@@ -399,8 +389,78 @@ export default function PredictionsPage() {
     },
   ];
 
+export default function PredictionsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [phcFilter, setPhcFilter] = useState('All');
+  const [riskFilter, setRiskFilter] = useState('All');
+  const [forecastPeriod, setForecastPeriod] = useState('14');
+  const [simulatedRunTimestamp, setSimulatedRunTimestamp] = useState('Just now (14:35)');
+  const [mlStatus, setMlStatus] = useState<{ online: boolean; status: string } | null>(null);
+  const [riskDataset, setRiskDataset] = useState<StockoutRiskItem[]>(initialRiskDataset);
+
+  const breadcrumbs = [
+    { label: 'Portal', href: '/' },
+    { label: 'Predictions & AI' },
+  ];
+
+  useEffect(() => {
+    let isMounted = true;
+    getPredictionsHealth()
+      .then((res) => {
+        if (isMounted) setMlStatus(res);
+      })
+      .catch(() => {
+        if (isMounted) setMlStatus({ online: false, status: 'offline' });
+      });
+
+    const user = getUser<{ phcId?: string }>();
+    if (user?.phcId) {
+      getPhcPredictions(user.phcId)
+        .then((res) => {
+          if (isMounted && res?.items && res.items.length > 0) {
+            const mapped: StockoutRiskItem[] = res.items.map((item, idx) => {
+              const riskCapitalized = (item.riskLevel.charAt(0) + item.riskLevel.slice(1).toLowerCase()) as StockoutRiskItem['riskLevel'];
+              let badge = 'bg-slate-100 text-slate-800 border-slate-200';
+              if (riskCapitalized === 'Critical') badge = 'bg-rose-100 text-rose-800 border-rose-200';
+              else if (riskCapitalized === 'High') badge = 'bg-amber-100 text-amber-800 border-amber-200';
+              else if (riskCapitalized === 'Medium') badge = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+              else if (riskCapitalized === 'Low') badge = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+
+              return {
+                id: `LIVE-${item.id || idx}`,
+                medicine: item.medicineName,
+                code: `EDL-${item.medicineId.slice(0, 6).toUpperCase()}`,
+                category: item.category,
+                phc: `PHC ${user.phcId}`,
+                district: 'Assigned District',
+                currentStock: item.currentStock,
+                unit: item.unit,
+                predictedDemand: item.predictedDailyDemand,
+                daysUntilStockout: item.daysRemaining ?? 999,
+                riskLevel: riskCapitalized,
+                riskBadge: badge,
+                recommendedAction: item.daysRemaining !== null && item.daysRemaining < 3 
+                  ? 'Immediate replenishment requested via ML redistribution'
+                  : 'Monitor daily inventory consumption',
+                actionType: item.daysRemaining !== null && item.daysRemaining < 7 ? 'replenish' : 'monitor',
+              };
+            });
+            setRiskDataset((prev) => [...mapped, ...prev]);
+          }
+        })
+        .catch((err) => {
+          console.log('[Predictions] Using demo dataset (live fetch fallback):', err);
+        });
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filtering
   const filteredRiskItems = useMemo(() => {
+
     return riskDataset.filter((item) => {
       const matchesSearch =
         searchQuery === '' ||
@@ -508,6 +568,19 @@ export default function PredictionsPage() {
             </div>
 
             <div className="flex flex-wrap md:flex-col items-start md:items-end justify-between md:justify-center gap-2 border-t md:border-t-0 md:border-l border-slate-700/60 pt-3 md:pt-0 md:pl-5 shrink-0 text-xs">
+              <div className="text-slate-300 flex items-center gap-1.5">
+                ML Service:
+                {mlStatus?.online ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Online (XGBoost)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium bg-slate-700 text-slate-300 border border-slate-600">
+                    Integrated (Standby)
+                  </span>
+                )}
+              </div>
               <div className="text-slate-300">
                 Model Confidence: <span className="font-bold text-emerald-400">94.6%</span>
               </div>
@@ -518,6 +591,7 @@ export default function PredictionsPage() {
                 Monitored Facilities: <span className="text-white font-semibold">486 Clinics</span>
               </div>
             </div>
+
           </div>
         </div>
 

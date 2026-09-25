@@ -62,3 +62,23 @@ export type {
 // Audit logs
 export { getAuditLogs, createAuditLog } from './audit';
 export type { AuditLog, CreateAuditLogPayload } from './audit';
+
+// Predictions & ML
+export {
+  getPredictionsHealth,
+  predictDemand,
+  predictStockout,
+  optimizeRedistribution,
+  getPhcPredictions,
+} from './predictions';
+export type {
+  DemandForecastPayload,
+  DemandForecastResult,
+  StockoutPredictionPayload,
+  StockoutPredictionResult,
+  OptimizationPayload,
+  OptimizationResult,
+  PhcPredictionItem,
+  PhcPredictionsResult,
+} from './predictions';
+

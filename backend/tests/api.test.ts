@@ -511,4 +511,88 @@ describe("API Test Suite", () => {
       assert.equal(data.isRead, true);
     });
   });
+
+  // 12. Predictions & ML Integration Flow
+  describe("Predictions & ML API Flow", () => {
+    it("should reject unauthenticated request to predictions health", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/health`);
+      assert.equal(res.status, 401);
+    });
+
+    it("should return ML service health status when authenticated", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/health`, {
+        headers: { Authorization: `Bearer ${phc1AdminToken}` },
+      });
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.ok("online" in data);
+      assert.ok("status" in data);
+    });
+
+    it("should return 400 on demand forecast with invalid schema", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/demand`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${phc1AdminToken}`,
+        },
+        body: JSON.stringify({
+          phc_id: phc1Id,
+          // Missing medicine_id and required numeric fields
+        }),
+      });
+      assert.equal(res.status, 400);
+    });
+
+    it("should prevent PHC_ADMIN from requesting demand forecast for other PHC", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/demand`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${phc1AdminToken}`,
+        },
+        body: JSON.stringify({
+          phc_id: "other-unauthorized-phc",
+          medicine_id: testMedicineId,
+          stock: 100,
+          patient_footfall: 50,
+          temperature: 25,
+          disease_cases: 2,
+          day_of_week: 1,
+          month: 5,
+          lag_1: 10,
+          lag_7: 12,
+          rolling_mean_7: 11,
+        }),
+      });
+      assert.equal(res.status, 403);
+    });
+
+    it("should reject optimize endpoint for unauthorized PHC_ADMIN", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/optimize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${phc1AdminToken}`,
+        },
+        body: JSON.stringify({
+          sources: [{ phc_id: phc1Id, medicine_id: testMedicineId, surplus: 50 }],
+          destinations: [{ phc_id: "other-phc", medicine_id: testMedicineId, required: 50 }],
+          distances: [{ source_phc: phc1Id, destination_phc: "other-phc", distance_km: 20 }],
+        }),
+      });
+      assert.equal(res.status, 403);
+    });
+
+    it("should fetch aggregated PHC inventory predictions with fallback support", async () => {
+      const res = await fetch(`${baseUrl}/api/predictions/phc/${phc1Id}`, {
+        headers: { Authorization: `Bearer ${phc1AdminToken}` },
+      });
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.phcId, phc1Id);
+      assert.ok(Array.isArray(data.items));
+    });
+  });
 });
+

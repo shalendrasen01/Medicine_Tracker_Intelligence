@@ -114,3 +114,50 @@ export const lowStockJobSchema = z.object({
   threshold: z.number().optional(),
   message: z.string().optional(),
 }).optional();
+
+// ML Prediction Schemas
+export const demandForecastSchema = z.object({
+  phc_id: z.string().min(1, "PHC ID is required"),
+  medicine_id: z.string().min(1, "Medicine ID is required"),
+  stock: z.number().min(0, "Stock must be non-negative"),
+  patient_footfall: z.number().min(0, "Patient footfall must be non-negative"),
+  temperature: z.number(),
+  disease_cases: z.number().min(0, "Disease cases must be non-negative"),
+  day_of_week: z.number().int().min(0).max(6, "Day of week must be between 0 and 6"),
+  month: z.number().int().min(1).max(12, "Month must be between 1 and 12"),
+  lag_1: z.number().min(0, "Lag 1 must be non-negative"),
+  lag_7: z.number().min(0, "Lag 7 must be non-negative"),
+  rolling_mean_7: z.number().min(0, "Rolling mean 7 must be non-negative"),
+});
+
+export const stockoutPredictionSchema = z.object({
+  phc_id: z.string().min(1, "PHC ID is required"),
+  medicine_id: z.string().min(1, "Medicine ID is required"),
+  current_stock: z.number().min(0, "Current stock must be non-negative"),
+  predicted_daily_demand: z.number().min(0, "Predicted daily demand must be non-negative"),
+});
+
+export const optimizationSchema = z.object({
+  sources: z.array(
+    z.object({
+      phc_id: z.string().min(1, "Source PHC ID is required"),
+      medicine_id: z.string().min(1, "Source Medicine ID is required"),
+      surplus: z.number().min(0, "Surplus must be non-negative"),
+    })
+  ).min(1, "At least one source is required"),
+  destinations: z.array(
+    z.object({
+      phc_id: z.string().min(1, "Destination PHC ID is required"),
+      medicine_id: z.string().min(1, "Destination Medicine ID is required"),
+      required: z.number().min(0, "Required quantity must be non-negative"),
+    })
+  ).min(1, "At least one destination is required"),
+  distances: z.array(
+    z.object({
+      source_phc: z.string().min(1, "Source PHC is required"),
+      destination_phc: z.string().min(1, "Destination PHC is required"),
+      distance_km: z.number().min(0, "Distance must be non-negative"),
+    })
+  ).min(1, "At least one distance record is required"),
+});
+
