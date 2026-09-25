@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.services.demand_risk import get_demand_risk
 import joblib
 import pandas as pd
 from fastapi import APIRouter
@@ -68,18 +69,28 @@ def predict_demand(
         ]
     )
 
+    
+
     prediction = model.predict(
         input_data[FEATURE_COLUMNS]
     )[0]
 
+    prediction = max(0, float(prediction))
+
+    risk_level = get_demand_risk(
+        request.stock,
+        prediction,
+    )
+
     return ForecastResponse(
-    phc_id=request.phc_id,
-    medicine_id=request.medicine_id,
-    predicted_demand=round(
-        max(0, float(prediction)),
-        2,
-    ),
-)
+        phc_id=request.phc_id,
+        medicine_id=request.medicine_id,
+        predicted_demand=round(
+            prediction,
+            2,
+        ),
+        risk_level=risk_level,
+    )
 
 
 @router.post(

@@ -22,6 +22,7 @@ class ForecastResponse(BaseModel):
     phc_id: str
     medicine_id: str
     predicted_demand: float
+    risk_level: str
 
 class StockoutRequest(BaseModel):
     phc_id: str
