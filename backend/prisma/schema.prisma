@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Transfer {
+  id             String   @id @default(uuid())
+  fromPhcId      String
+  toPhcId        String
+  medicineId     String
+  quantity       Int
+  status         String   @default("PENDING")
+  requestedById  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  medicine    Medicine @relation(fields: [medicineId], references: [id])
+  requestedBy User     @relation(fields: [requestedById], references: [id])
+
+  @@index([fromPhcId])
+  @@index([toPhcId])
+  shipment Shipment?
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model State {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  districts District[]
+  users     User[]
+}
+
+model District {
+  id      String  @id @default(uuid())
+  name    String
+  stateId String
+  state   State   @relation(fields: [stateId], references: [id])
+  phcs    PHC[]
+
+  @@unique([stateId, name])
+}
+
+model PHC {
+  id         String   @id @default(uuid())
+  name       String
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  users      User[]
+
+  @@unique([districtId, name])
+  inventory Inventory[]
+  beds Bed?
+}
+
+enum Role {
+  CENTRAL_ADMIN
+  STATE_ADMIN
+  PHC_ADMIN
+  LOGISTICS_COORDINATOR
+}
+
+model User {
+  id           String  @id @default(uuid())
+  name         String
+  email        String  @unique
+  passwordHash String
+  role         Role
+
+  stateId String?
+  state   State? @relation(fields: [stateId], references: [id])
+
+  phcId String?
+  phc   PHC? @relation(fields: [phcId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  transfers Transfer[]
+}
+
+model Medicine {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  category  String?
+  unit      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  inventory Inventory[]
+  transfers Transfer[]
+}
+
+model Inventory {
+  id         String   @id @default(uuid())
+  phcId      String
+  medicineId String
+  quantity   Int      @default(0)
+  minStock   Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  phc      PHC      @relation(fields: [phcId], references: [id])
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+
+  @@unique([phcId, medicineId])
+}
+
+model Shipment {
+  id         String   @id @default(uuid())
+  transferId String   @unique
+  status     String   @default("PENDING")
+  trackingNo String?
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+}
+
+model Alert {
+  id         String   @id @default(uuid())
+  phcId      String
+  medicineId String
+  type       String
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([phcId])
+  @@index([medicineId])
+}
+
+model Bed {
+  id         String   @id @default(uuid())
+  phcId      String
+  totalBeds  Int
+  occupied   Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([phcId])
+  phc PHC @relation(fields: [phcId], references: [id])
+}
+
+model PatientData {
+  id          String   @id @default(uuid())
+  phcId       String
+  date        DateTime @default(now())
+  totalVisits Int      @default(0)
+  admissions  Int      @default(0)
+  discharges  Int      @default(0)
+}
+
+model ResourceRequest {
+  id          String   @id @default(uuid())
+  phcId       String
+  resource    String
+  quantity    Int
+  priority    String   @default("NORMAL")
+  status      String   @default("PENDING")
+  requestedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+model Staff {
+  id        String   @id @default(uuid())
+  phcId     String
+  name      String
+  role      String
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
